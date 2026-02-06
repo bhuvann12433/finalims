@@ -1,39 +1,34 @@
-// src/contexts/AuthContext.tsx
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 
 interface AuthContextType {
-  session: any | null;
   user: any | null;
-  adminData: any | null;
+  token: string | null;
   loading: boolean;
   signIn: (username: string, password: string) => Promise<{ error: any }>;
-  signOut: () => Promise<void>;
+  signOut: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [session, setSession] = useState<any | null>(null);
   const [user, setUser] = useState<any | null>(null);
-  const [adminData, setAdminData] = useState<any | null>(null);
+  const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const API = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
-  console.log("AuthContext API:", API);
+  const API = import.meta.env.VITE_API_BASE_URL;
 
-  // Load saved session
+  // ✅ RESTORE SESSION (single source of truth)
   useEffect(() => {
-    const saved = localStorage.getItem("session");
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      setSession(parsed);
+    const session = localStorage.getItem("session");
+    if (session) {
+      const parsed = JSON.parse(session);
       setUser(parsed.user || null);
-      setAdminData(parsed.admin || null);
+      setToken(parsed.token || null);
     }
     setLoading(false);
   }, []);
 
-  // LOGIN ============================================
+  // ✅ LOGIN
   const signIn = async (username: string, password: string) => {
     try {
       const res = await fetch(`${API}/api/auth/login`, {
@@ -49,43 +44,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       const sessionData = {
-        token: data.token,
         user: data.user,
-        admin: data.user,
+        token: data.token,
       };
 
       localStorage.setItem("session", JSON.stringify(sessionData));
-
-      setSession(sessionData);
       setUser(data.user);
-      setAdminData(data.user);
+      setToken(data.token);
 
       return { error: null };
-    } catch (err) {
+    } catch {
       return { error: { message: "Server not reachable" } };
     }
   };
 
-  // LOGOUT ===========================================
-  const signOut = async () => {
+  // ✅ LOGOUT
+  const signOut = () => {
     localStorage.removeItem("session");
-    setSession(null);
     setUser(null);
-    setAdminData(null);
+    setToken(null);
   };
 
   return (
     <AuthContext.Provider
-      value={{ session, user, adminData, loading, signIn, signOut }}
+      value={{
+        user,
+        token,
+        loading,
+        signIn,
+        signOut,
+      }}
     >
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   );
 }
 
-// Hook
+// ✅ Hook
 export function useAuth() {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
+  if (!ctx) {
+    throw new Error("useAuth must be used inside AuthProvider");
+  }
   return ctx;
 }

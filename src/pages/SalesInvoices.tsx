@@ -1,6 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -21,7 +20,6 @@ import {
   Search,
   Plus,
   MoreVertical,
-  Eye,
   Pencil,
   Trash,
   CalendarDays,
@@ -30,23 +28,21 @@ import {
   Loader2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-
-// Date-fns imports
-import { 
-  format, 
-  subDays, 
-  startOfWeek, 
-  endOfWeek, 
-  startOfMonth, 
-  endOfMonth, 
-  startOfQuarter, 
-  endOfQuarter, 
-  startOfYear, 
-  endOfYear, 
+import {
+  format,
+  subDays,
+  startOfWeek,
+  endOfWeek,
+  startOfMonth,
+  endOfMonth,
+  startOfQuarter,
+  endOfQuarter,
+  startOfYear,
+  endOfYear,
   isWithinInterval,
   parseISO,
   differenceInDays,
-  isValid
+  isValid,
 } from "date-fns";
 
 export default function SalesInvoices() {
@@ -82,7 +78,7 @@ export default function SalesInvoices() {
   };
 
   const deleteInvoice = async (id: string, e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent row click when deleting
+    e.stopPropagation(); 
     if (!confirm("Delete invoice permanently?")) return;
     try {
       await fetch(`${API}/api/invoices/${id}`, { method: "DELETE" });
@@ -165,6 +161,7 @@ export default function SalesInvoices() {
            <Button variant="outline" className="flex items-center gap-2 h-[38px] border-gray-300">
              <BarChart3 className="h-4 w-4" /> Reports <ChevronDown className="h-4 w-4" />
            </Button>
+           {/* CREATE BUTTON */}
            <Button className="bg-[#5b3df5] hover:bg-[#472fbe] text-white h-[38px]" onClick={() => navigate("/sales/create")}>
              <Plus className="mr-2 h-4 w-4" /> Create Sales Invoice
            </Button>
@@ -260,15 +257,14 @@ export default function SalesInvoices() {
                 const dueDate = inv.due_date ? new Date(inv.due_date) : null;
                 const daysDue = dueDate ? differenceInDays(dueDate, new Date()) : 0;
                 const invoiceDate = parseISO(inv.invoice_date);
-
-                // Safe ID check
-                const invId = inv.id || inv._id;
+                const invId = inv.id || inv._id; // Ensure we get the ID
 
                 return (
                   <TableRow 
                     key={invId} 
                     className="hover:bg-blue-50/50 cursor-pointer group"
-                    onClick={() => navigate(`/sales/view/${invId}`)} // <--- ROW CLICK NAVIGATION
+                    // 🔥 FIX: Navigates to Create page with ?edit=ID
+                    onClick={() => navigate(`/sales/create?edit=${invId}`)} 
                   >
                     <TableCell className="font-medium text-gray-700">
                       {isValid(invoiceDate) ? format(invoiceDate, "dd MMM yyyy") : "-"}
@@ -301,7 +297,6 @@ export default function SalesInvoices() {
                     </TableCell>
                     
                     <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                      {/* Stop propagation so clicking menu doesn't navigate */}
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -309,12 +304,13 @@ export default function SalesInvoices() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => navigate(`/sales/view/${invId}`)}>
-                            <Eye className="mr-2 h-4 w-4" /> View
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => navigate(`/sales/edit/${invId}`)}>
+                          {/* ❌ REMOVED VIEW BUTTON */}
+                          
+                          {/* 🔥 FIX: Edit now goes to Create page */}
+                          <DropdownMenuItem onClick={() => navigate(`/sales/create?edit=${invId}`)}>
                             <Pencil className="mr-2 h-4 w-4" /> Edit
                           </DropdownMenuItem>
+                          
                           <DropdownMenuItem className="text-red-600 focus:text-red-600" onClick={(e) => deleteInvoice(invId, e)}>
                             <Trash className="mr-2 h-4 w-4" /> Delete
                           </DropdownMenuItem>

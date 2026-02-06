@@ -1,19 +1,21 @@
-import { 
-  LayoutDashboard, 
-  Users, 
-  Package, 
-  BarChart3, 
-  Receipt, 
-  CreditCard, 
-  ShoppingCart, 
+import {
+  LayoutDashboard,
+  Users,
+  Package,
+  BarChart3,
+  Receipt,
+  CreditCard,
+  ShoppingCart,
   FileBarChart,
   Settings,
-  Tag
+  Tag,
+  LogOut,
+  Shield,
+  User,
 } from "lucide-react";
-
 import { useState, useEffect } from "react";
-import { NavLink, useLocation } from "react-router-dom";
-
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   Sidebar,
   SidebarContent,
@@ -24,62 +26,80 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarHeader,
+  SidebarFooter,
 } from "@/components/ui/sidebar";
 
 export function AppSidebar() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, signOut } = useAuth(); // ✅ ONLY SOURCE
 
   const [openItems, setOpenItems] = useState(false);
   const [openSales, setOpenSales] = useState(false);
 
+  const role = (user?.role || "guest").toLowerCase();
+  const isAdmin = role === "admin";
+
   useEffect(() => {
     if (location.pathname.startsWith("/items")) setOpenItems(true);
-    if (location.pathname.startsWith("/sales")) setOpenSales(true);
+    if (location.pathname.startsWith("/sales") || location.pathname.startsWith("/delivery")) {
+      setOpenSales(true);
+    }
   }, [location.pathname]);
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate("/login", { replace: true });
+  };
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader className="border-b border-sidebar-border">
-        <div className="flex items-center gap-2 px-4 py-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sidebar-primary">
-            <span className="text-lg font-bold text-sidebar-primary-foreground">G</span>
+      <SidebarHeader className="border-b border-sidebar-border bg-sidebar-primary text-sidebar-primary-foreground">
+        <div className="flex items-center gap-2 px-4 py-4">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/10">
+            <span className="text-xl font-bold text-white">G</span>
           </div>
           <div className="flex flex-col">
-            <span className="text-sm font-semibold text-sidebar-foreground">GNR SURGICALS</span>
-            <span className="text-xs text-sidebar-foreground/60">Admin Panel</span>
+            <span className="text-sm font-bold tracking-wide">GNR SURGICALS</span>
+            <div className="flex items-center gap-1.5 mt-1 bg-black/20 px-2 py-0.5 rounded w-fit">
+              {isAdmin ? (
+                <Shield className="w-3 h-3 text-yellow-300" />
+              ) : (
+                <User className="w-3 h-3 text-blue-300" />
+              )}
+              <span className="text-[10px] uppercase font-mono text-white/90">
+                {user?.username || "Guest"} : {role}
+              </span>
+            </div>
           </div>
         </div>
       </SidebarHeader>
 
       <SidebarContent>
-
-        {/* MAIN MENU */}
         <SidebarGroup>
           <SidebarGroupLabel>Main Menu</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
+              {isAdmin && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild>
+                    <NavLink
+                      to="/admin/dashboard"
+                      className={({ isActive }) =>
+                        `flex items-center gap-3 px-3 py-2 rounded-lg ${
+                          isActive
+                            ? "bg-sidebar-accent text-sidebar-primary font-medium"
+                            : "text-sidebar-foreground"
+                        }`
+                      }
+                    >
+                      <LayoutDashboard className="h-4 w-4" />
+                      <span>Dashboard</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
 
-              {/* Dashboard */}
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <NavLink
-                    to="/"
-                    end
-                    className={({ isActive }) =>
-                      `flex items-center gap-3 px-3 py-2 rounded-lg ${
-                        isActive
-                          ? "bg-sidebar-accent text-sidebar-primary font-medium"
-                          : "text-sidebar-foreground"
-                      }`
-                    }
-                  >
-                    <LayoutDashboard className="h-4 w-4" />
-                    <span>Dashboard</span>
-                  </NavLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-
-              {/* Parties */}
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>
                   <NavLink
@@ -98,93 +118,44 @@ export function AppSidebar() {
                 </SidebarMenuButton>
               </SidebarMenuItem>
 
-              {/* ITEMS SECTION */}
               <SidebarMenuItem>
                 <SidebarMenuButton
                   onClick={() => setOpenItems(!openItems)}
-                  className="flex items-center justify-between w-full cursor-pointer text-sidebar-foreground/80 hover:text-white"
+                  className="flex items-center justify-between w-full cursor-pointer hover:bg-gray-100/10"
                 >
                   <div className="flex items-center gap-3">
                     <Package className="h-4 w-4" />
                     <span>Items</span>
                   </div>
-
-                  <svg
-                    className={`h-4 w-4 transition-transform duration-200 ${
-                      openItems ? "rotate-90" : ""
-                    }`}
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    viewBox="0 0 24 24"
-                  >
-                    <path d="M9 5l7 7-7 7" />
-                  </svg>
                 </SidebarMenuButton>
-
                 {openItems && (
                   <div className="flex flex-col gap-2 mt-2 ml-8">
                     <NavLink
                       to="/items"
-                      className={({ isActive }) =>
-                        `flex items-center gap-2 rounded-xl px-3 py-2 ${
-                          isActive
-                            ? "bg-[#2f3c85] text-white"
-                            : "bg-[#26326B] text-white"
-                        }`
-                      }
+                      className="flex items-center gap-2 rounded-xl px-3 py-2 bg-[#26326B] text-white hover:bg-[#2f3c85]"
                     >
                       📦 Inventory
                     </NavLink>
-
-                    <div className="flex items-center gap-2 px-3 py-2 rounded-xl text-gray-400 cursor-not-allowed">
-                      🏠 Godown (Warehouse)
-                      <span className="ml-auto text-xs bg-gray-700 text-gray-300 px-2 py-0.5 rounded">
-                        Empty
-                      </span>
-                    </div>
                   </div>
                 )}
               </SidebarMenuItem>
 
-              {/* SALES SECTION */}
               <SidebarMenuItem>
                 <SidebarMenuButton
                   onClick={() => setOpenSales(!openSales)}
-                  className="flex items-center justify-between w-full cursor-pointer text-sidebar-foreground/80 hover:text-white"
+                  className="flex items-center justify-between w-full cursor-pointer hover:bg-gray-100/10"
                 >
                   <div className="flex items-center gap-3">
                     <Tag className="h-4 w-4" />
                     <span>Sales</span>
                   </div>
-
-                  <svg
-                    className={`h-4 w-4 transition-transform duration-200 ${
-                      openSales ? "rotate-90" : ""
-                    }`}
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    viewBox="0 0 24 24"
-                  >
-                    <path d="M9 5l7 7-7 7" />
-                  </svg>
                 </SidebarMenuButton>
-
                 {openSales && (
                   <div className="flex flex-col gap-2 mt-2 ml-8">
                     {[
                       { label: "Sales Invoices", url: "/sales/invoices" },
-                      { label: "Quotation / Estimate", url: "/sales/quotation" },
-                      { label: "Payment In", url: "/sales/payment-in" },
-                      { label: "Sales Return", url: "/sales/return" },
-                      { label: "Credit Note", url: "/sales/credit-note" },
+                      { label: "Quotation", url: "/sales/quotation" },
                       { label: "Delivery Challan", url: "/delivery" },
-                      { label: "Proforma Invoice", url: "/sales/proforma" },
                     ].map((item) => (
                       <NavLink
                         key={item.url}
@@ -193,7 +164,7 @@ export function AppSidebar() {
                           `px-3 py-2 rounded-lg ${
                             isActive
                               ? "bg-sidebar-accent text-white"
-                              : "hover:text-white"
+                              : "text-gray-400 hover:text-white"
                           }`
                         }
                       >
@@ -204,41 +175,39 @@ export function AppSidebar() {
                 )}
               </SidebarMenuItem>
 
-              {/* Reports */}
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <NavLink
-                    to="/reports"
-                    className={({ isActive }) =>
-                      `flex items-center gap-3 px-3 py-2 rounded-lg ${
-                        isActive
-                          ? "bg-sidebar-accent text-sidebar-primary font-medium"
-                          : "text-sidebar-foreground"
-                      }`
-                    }
-                  >
-                    <BarChart3 className="h-4 w-4" />
-                    <span>Reports</span>
-                  </NavLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-
+              {isAdmin && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild>
+                    <NavLink
+                      to="/reports"
+                      className={({ isActive }) =>
+                        `flex items-center gap-3 px-3 py-2 rounded-lg ${
+                          isActive
+                            ? "bg-sidebar-accent text-sidebar-primary font-medium"
+                            : "text-sidebar-foreground"
+                        }`
+                      }
+                    >
+                      <BarChart3 className="h-4 w-4" />
+                      <span>Reports</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* OTHER MODULES */}
         <SidebarGroup>
-          <SidebarGroupLabel>Other</SidebarGroupLabel>
+          <SidebarGroupLabel>Modules</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-
               {[
-                { title: "Expenses", url: "/expenses", icon: Receipt },
+                ...(isAdmin ? [{ title: "Expenses", url: "/expenses", icon: Receipt }] : []),
                 { title: "POS Billing", url: "/pos", icon: CreditCard },
                 { title: "E-Invoicing", url: "/e-invoicing", icon: FileBarChart },
                 { title: "Online Orders", url: "/online-orders", icon: ShoppingCart },
-                { title: "Settings", url: "/settings", icon: Settings },
+                ...(isAdmin ? [{ title: "Settings", url: "/admin/settings", icon: Settings }] : []),
               ].map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
@@ -258,12 +227,24 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
-
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-
       </SidebarContent>
+
+      <SidebarFooter className="border-t border-sidebar-border p-2">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              onClick={handleLogout}
+              className="w-full flex items-center gap-3 text-red-500 hover:text-red-600 hover:bg-red-50 transition-colors"
+            >
+              <LogOut className="h-4 w-4" />
+              <span>Logout</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
     </Sidebar>
   );
 }

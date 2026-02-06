@@ -1,11 +1,14 @@
-import { Navigate } from "react-router-dom";
+import { Navigate, Outlet } from "react-router-dom";
 
-export default function PrivateRoute({ children }: { children: JSX.Element }) {
-  const token = localStorage.getItem("token");
-
-  if (!token) {
-    return <Navigate to="/login" replace />;
+// This component wraps routes that strictly require ADMIN access
+export default function PrivateRoute() {
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  
+  // If user is NOT logged in or NOT an admin, kick them to Sales
+  if (!user || user.role !== "admin") {
+    return <Navigate to="/sales" replace />;
   }
 
-  return children;
+  // If Admin, let them through
+  return <Outlet />;
 }

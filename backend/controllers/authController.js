@@ -2,70 +2,156 @@ const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
-// Register User
+// ===============================
+// REGISTER (OPTIONAL)
+// ===============================
 exports.register = async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const { username, password, role } = req.body;
 
-    const existingUser = await User.findOne({ username });
-    if (existingUser)
+    if (!username || !password) {
+      return res.status(400).json({ msg: "Missing fields" });
+    }
+
+    const existing = await User.findOne({ username });
+    if (existing) {
       return res.status(400).json({ msg: "User already exists" });
+    }
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const user = await User.create({ username, password: hashedPassword });
+    const user = await User.create({
+      username,
+      password: hashedPassword,
+      role: role || "staff",
+      permissions: {
+        canEdit: role === "admin",
+        canDelete: role === "admin",
+        viewDashboard: role === "admin",
+      },
+    });
 
-    res.json({ msg: "User created successfully", user });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.json({ msg: "User created", user });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ msg: "Server error" });
   }
 };
 
 // ===============================
-// 🔥 DEBUG LOGIN FUNCTION (FULL)
+// LOGIN
 // ===============================
 exports.login = async (req, res) => {
   try {
     const { username, password } = req.body;
 
-    console.log("Login Attempt Received:", username, password);
-
     const user = await User.findOne({ username });
-
     if (!user) {
-      console.log("❌ User not found in DB");
-      return res.status(400).json({ msg: "Invalid credentials" });
+      return res.status(401).json({ msg: "Invalid credentials" });
     }
 
-    // Debugging password
-    console.log("Entered Password:", password);
-    console.log("Stored Hash from DB:", user.password);
-
     const isMatch = await bcrypt.compare(password, user.password);
-
-    console.log("Password Match Result:", isMatch);
-
     if (!isMatch) {
-      console.log("❌ Password mismatch");
-      return res.status(400).json({ msg: "Invalid credentials" });
+      return res.status(401).json({ msg: "Invalid credentials" });
     }
 
     const token = jwt.sign(
-      { id: user._id },
-      process.env.JWT_SECRET,
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET || "secret123",
       { expiresIn: "7d" }
     );
 
-    console.log("✅ Login Success for user:", username);
-
     res.json({
-      msg: "Login successful",
       token,
-      user: { id: user._id, username: user.username },
+      user: {
+        id: user._id,
+        username: user.username,
+        role: user.role,
+        permissions: user.permissions || {},
+      },
     });
-    
-  } catch (error) {
-    console.error("🔥 LOGIN ERROR:", error);
-    res.status(500).json({ error: error.message });
+  } catch (err) {
+    console.error("LOGIN ERROR:", err);
+    res.status(500).json({ msg: "Server error" });
+  }
+};
+
+// ===============================
+// CREATE STAFF (ADMIN)
+// ===============================
+exports.createStaff = async (req, res) => {
+  try {
+    const { username, password, canEdit } = req.body;
+
+    if (!username || !password) {
+      return res.status(400).json({ msg: "Missing fields" });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const staff = await User.create({
+      username,
+      password: hashedPassword,
+      role: "staff",
+      permissions: {
+        canEdit: !!canEdit,
+        canDelete: false,
+        viewDashboard: false,
+      },
+    });
+
+    res.json(staff);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ msg: "Failed to create staff" });
+  }
+};
+
+// ===============================
+// GET ALL STAFF
+// ===============================
+exports.getAllStaff = async (req, res) => {
+  try {
+    const staff = await User.find({ role: "staff" }).select("-password");
+    res.json(staff);
+  } catch (err) {
+    res.status(500).json({ msg: "Failed to fetch staff" });
+  }
+};
+
+// ===============================
+// DELETE STAFF
+// ===============================
+exports.deleteStaff = async (req, res) => {
+  try {
+    await User.findByIdAndDelete(req.params.id);
+    res.json({ msg: "Staff deleted" });
+  } catch (err) {
+    res.status(500).json({ msg: "Delete failed" });
+  }
+};
+
+// ===============================
+// UPDATE STAFF (PROMOTE / DEMOTE)
+// ===============================
+exports.updateStaff = async (req, res) => {
+  try {
+    const { canEdit } = req.body;
+
+    const updated = await User.findByIdAndUpdate(
+      req.params.id,
+      {
+        permissions: {
+          canEdit: !!canEdit,
+          canDelete: false,
+          viewDashboard: false,
+        },
+      },
+      { new: true }
+    );
+
+    res.json(updated);
+  } catch (err) {
+    res.status(500).json({ msg: "Update failed" });
   }
 };

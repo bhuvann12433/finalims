@@ -1,197 +1,173 @@
-// controllers/itemController.js
-const Item = require("../models/Item");
+const mongoose = require("mongoose");
+const Invoice = require("../models/Invoice");
+const Item = require("../models/Item"); // <--- CRITICAL: Import Item Model
 
-// =============================
-// 1. CREATE ITEM
-// =============================
-exports.createItem = async (req, res) => {
+// ===============================
+// 1. GET ALL INVOICES
+// ===============================
+exports.getInvoices = async (req, res) => {
   try {
-    const item = await Item.create({
-      name: req.body.name,
-      item_code: req.body.item_code || "",
-      category: req.body.category || "",
-      type: req.body.type || "goods",
-      measuring_unit: req.body.measuring_unit || "PCS", // Default unit
+    const invoices = await Invoice.find()
+      .populate("party_id", "name mobile billing_address")
+      .sort({ createdAt: -1 });
 
-      // Price Fields (Safe Parsing)
-      sales_price: Number(req.body.sales_price) || 0,
-      purchase_price: Number(req.body.purchase_price) || 0,
-      mrp: Number(req.body.mrp) || 0,
-      wholesale_price: Number(req.body.wholesale_price) || 0,
-
-      // Tax & HSN
-      gst_rate: Number(req.body.gst_rate) || 0,
-      hsn_code: req.body.hsn_code || "",
-
-      // Inventory Settings
-      enable_batching: req.body.enable_batching || false,
-      low_stock_threshold: Number(req.body.low_stock_threshold) || 10,
-
-      description: req.body.description || "",
-      
-      // ⭐ CRITICAL STOCK FIELD
-      quantity: Number(req.body.quantity) || 0, 
-    });
-
-    res.status(201).json(item);
-  } catch (error) {
-    console.error("ITEM CREATE ERROR:", error);
-    res.status(500).json({ error: "Item creation failed" });
-  }
-};
-
-// =============================
-// 2. GET ALL ITEMS (Sorted Newest First)
-// =============================
-exports.getItems = async (req, res) => {
-  try {
-    const items = await Item.find().sort({ createdAt: -1 });
-
-    // Format strictly to ensure frontend gets clean numbers
-    const formatted = items.map((item) => ({
-      _id: item._id, // Standard ID
-      id: item._id,  // Duplicate for easy frontend access
-      name: item.name,
-      item_code: item.item_code,
-      category: item.category,
-      type: item.type,
-      measuring_unit: item.measuring_unit,
-      
-      // Stock
-      quantity: item.quantity || 0,
-
-      // Prices
-      sales_price: item.sales_price || 0,
-      purchase_price: item.purchase_price || 0,
-      mrp: item.mrp || 0,
-      wholesale_price: item.wholesale_price || 0,
-
-      gst_rate: item.gst_rate || 0,
-      hsn_code: item.hsn_code,
-      
-      enable_batching: item.enable_batching,
-      low_stock_threshold: item.low_stock_threshold,
-      description: item.description,
-      createdAt: item.createdAt,
+    const formatted = invoices.map((inv) => ({
+      _id: inv._id,
+      id: inv._id,
+      invoice_number: inv.invoice_number,
+      invoice_date: inv.invoice_date,
+      due_date: inv.due_date,
+      total_amount: inv.total || 0,
+      amount_received: inv.amount_received || 0,
+      balance_due: inv.balance_due || 0,
+      payment_status: inv.payment_status,
+      party: inv.party_id,
+      party_name: inv.party_id?.name || "Cash Sale",
     }));
 
     res.json(formatted);
-  } catch (error) {
-    console.error("FETCH ITEMS ERROR:", error);
-    res.status(500).json({ error: "Fetch items failed" });
+  } catch (err) {
+    console.error("Fetch Error:", err);
+    res.status(500).json({ error: "Failed to fetch invoices" });
   }
 };
 
-// =============================
-// 3. GET ONE ITEM
-// =============================
-exports.getItemById = async (req, res) => {
+// ===============================
+// 2. GET SINGLE INVOICE
+// ===============================
+exports.getInvoiceById = async (req, res) => {
   try {
-    const item = await Item.findById(req.params.id);
-    if (!item) return res.status(404).json({ error: "Item not found" });
-    res.json(item);
-  } catch (error) {
-    console.error("FETCH ITEM ERROR:", error);
-    res.status(500).json({ error: "Fetch item failed" });
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ error: "Invalid Invoice ID format" });
+    }
+
+    const invoice = await Invoice.findById(id).populate("party_id").lean();
+    if (!invoice) return res.status(404).json({ error: "Invoice not found" });
+
+    const responseData = { ...invoice, party: invoice.party_id };
+    res.json(responseData);
+  } catch (err) {
+    console.error("Fetch ID Error:", err);
+    res.status(500).json({ error: "Failed to fetch invoice" });
   }
 };
 
-// =============================
-// 4. UPDATE ITEM
-// =============================
-exports.updateItem = async (req, res) => {
+// ===============================
+// ⭐ 3. CREATE INVOICE (FIXED STOCK DEDUCTION)
+// ===============================
+exports.createInvoice = async (req, res) => {
+  console.log("Create Invoice Request Received:", req.body.invoice_number);
+
   try {
-    const updated = await Item.findByIdAndUpdate(
-      req.params.id,
-      {
-        name: req.body.name,
-        item_code: req.body.item_code || "",
-        category: req.body.category || "",
-        type: req.body.type || "goods",
-        measuring_unit: req.body.measuring_unit || "PCS",
+    const {
+      invoice_number,
+      invoice_date,
+      due_date,
+      party_id,
+      items, // Array of items from frontend
+      subtotal,
+      discount,
+      tax,
+      total,
+      amount_received,
+      balance_due,
+    } = req.body;
 
-        sales_price: Number(req.body.sales_price) || 0,
-        purchase_price: Number(req.body.purchase_price) || 0,
-        mrp: Number(req.body.mrp) || 0,
-        wholesale_price: Number(req.body.wholesale_price) || 0,
+    // 1. Calculate Status
+    let payment_status = "unpaid";
+    if (Number(amount_received) >= Number(total) && Number(total) > 0) {
+      payment_status = "paid";
+    } else if (Number(amount_received) > 0) {
+      payment_status = "partial";
+    }
 
-        gst_rate: Number(req.body.gst_rate) || 0,
-        hsn_code: req.body.hsn_code || "",
-
-        enable_batching: req.body.enable_batching || false,
-        low_stock_threshold: Number(req.body.low_stock_threshold) || 10,
-
-        description: req.body.description || "",
-        
-        // Ensure quantity updates are processed as numbers
-        quantity: Number(req.body.quantity) || 0,
-      },
-      { new: true } // Return the updated document
-    );
-
-    if (!updated) return res.status(404).json({ error: "Item not found" });
-
-    res.json(updated);
-  } catch (error) {
-    console.error("UPDATE ITEM ERROR:", error);
-    res.status(500).json({ error: "Update item failed" });
-  }
-};
-
-// =============================
-// 5. DELETE ITEM
-// =============================
-exports.deleteItem = async (req, res) => {
-  try {
-    const deleted = await Item.findByIdAndDelete(req.params.id);
-    if (!deleted) return res.status(404).json({ error: "Item not found" });
-    res.json({ success: true, message: "Item deleted successfully" });
-  } catch (error) {
-    console.error("DELETE ITEM ERROR:", error);
-    res.status(500).json({ error: "Delete item failed" });
-  }
-};
-
-// =============================
-// 6. DASHBOARD STATS (Total Items + Stock Value)
-// =============================
-exports.getDashboardStats = async (req, res) => {
-  try {
-    const totalItems = await Item.countDocuments();
-
-    const aggregation = await Item.aggregate([
-      { 
-        $group: { 
-          _id: null, 
-          totalQuantity: { $sum: "$quantity" },
-          totalValue: { $sum: { $multiply: ["$quantity", "$sales_price"] } } // Estimate stock value
-        } 
-      }
-    ]);
-
-    res.json({
-      total_items: totalItems,
-      total_quantity: aggregation[0]?.totalQuantity || 0,
-      stock_value: aggregation[0]?.totalValue || 0
+    // 2. Save Invoice
+    const invoice = new Invoice({
+      invoice_number,
+      invoice_date,
+      due_date,
+      party_id,
+      items,
+      subtotal,
+      discount,
+      tax,
+      total,
+      amount_received,
+      balance_due,
+      payment_status,
     });
-  } catch (error) {
-    console.error("DASHBOARD STATS ERROR:", error);
-    res.status(500).json({ error: "Failed to load dashboard stats" });
+
+    await invoice.save();
+    console.log("✅ Invoice Saved:", invoice._id);
+
+    // ---------------------------------------------------------
+    // ⭐ 3. CRITICAL STEP: SUBTRACT STOCK FROM INVENTORY
+    // ---------------------------------------------------------
+    if (items && items.length > 0) {
+      console.log(`📉 Updating Stock for ${items.length} items...`);
+      
+      const bulkOps = items.map((item) => {
+        // Ensure ID is valid before using it
+        if (!item.item_id || !mongoose.Types.ObjectId.isValid(item.item_id)) {
+           console.error("❌ Invalid Item ID found:", item.item_id);
+           return null;
+        }
+
+        return {
+          updateOne: {
+            filter: { _id: new mongoose.Types.ObjectId(item.item_id) }, // Force ID Conversion
+            update: { $inc: { quantity: -Number(item.quantity) } } // Decrease quantity
+          }
+        };
+      }).filter(op => op !== null); // Remove nulls
+
+      if (bulkOps.length > 0) {
+        const result = await Item.bulkWrite(bulkOps);
+        console.log("✅ Stock Updated. Modified Count:", result.modifiedCount);
+      }
+    }
+    // ---------------------------------------------------------
+
+    res.status(201).json({ success: true, invoice });
+
+  } catch (err) {
+    console.error("Create Invoice Error:", err);
+    res.status(500).json({ error: err.message || "Failed to create invoice" });
   }
 };
 
-// =============================
-// 7. RECENT TRANSACTIONS (Recently Added/Edited Items)
-// =============================
-exports.getRecentTransactions = async (req, res) => {
+// ===============================
+// 4. GET NEXT INVOICE NUMBER
+// ===============================
+exports.getNextInvoiceNumber = async (req, res) => {
   try {
-    const recentItems = await Item.find()
-      .sort({ updatedAt: -1 })
-      .limit(5); // Limit to top 5 for cleaner dashboard
+    const lastInvoice = await Invoice.findOne().sort({ createdAt: -1 });
+    let nextNum = 1;
+    if (lastInvoice && lastInvoice.invoice_number) {
+      const match = lastInvoice.invoice_number.match(/(\d+)$/);
+      if (match) {
+        nextNum = parseInt(match[0]) + 1;
+      }
+    }
+    res.json({ nextNumber: nextNum.toString() });
+  } catch (err) {
+    console.error("Auto-Number Error:", err);
+    res.status(500).json({ nextNumber: "1" });
+  }
+};
 
-    res.json(recentItems);
-  } catch (error) {
-    console.error("RECENT TRANSACTIONS ERROR:", error);
-    res.status(500).json({ error: "Failed to load recent transactions" });
+// ===============================
+// 5. DELETE INVOICE
+// ===============================
+exports.deleteInvoice = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ error: "Invalid ID" });
+    
+    await Invoice.findByIdAndDelete(id);
+    res.json({ success: true, message: "Invoice deleted" });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to delete invoice" });
   }
 };

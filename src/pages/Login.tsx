@@ -1,23 +1,26 @@
-// src/pages/Login.tsx
 import React, { useEffect, useRef, useState } from "react";
-import { useAuth } from "@/contexts/AuthContext";
-import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
-
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 import MonsterSVG from "@/components/MonsterSVG";
 import { initMonsterAnimation } from "@/utils/monsterAnimation";
-
 import "./Login.css";
 
 export default function Login() {
-  // TRUE controlled input values
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const { toast } = useToast();
+  const { signIn } = useAuth(); // ✅ correct
+  const navigate = useNavigate();
 
   const svgContainerRef = useRef<HTMLDivElement | null>(null);
   const showPasswordRef = useRef<HTMLInputElement | null>(null);
+  const emailInputRef = useRef<HTMLInputElement | null>(null);
+  const passwordInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Monster refs ONLY for SVG, NOT for inputs
+  // Monster Parts
   const eyeL = useRef(null);
   const eyeR = useRef(null);
   const nose = useRef(null);
@@ -44,10 +47,7 @@ export default function Login() {
   const armR = useRef(null);
   const twoFingers = useRef(null);
 
-  // Inputs used by animation (NOT controlled by React)
-  const emailInputRef = useRef<HTMLInputElement | null>(null);
-  const passwordInputRef = useRef<HTMLInputElement | null>(null);
-
+  // 🎭 Init monster animation
   useEffect(() => {
     initMonsterAnimation({
       svgContainer: svgContainerRef.current,
@@ -83,14 +83,16 @@ export default function Login() {
     });
   }, []);
 
-  const { signIn } = useAuth();
-  const { toast } = useToast();
-  const navigate = useNavigate();
-
+  // 🔐 LOGIN HANDLER (FIXED)
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+    e.preventDefault(); // ✅ REQUIRED
+    if (loading) return;
+
+    setLoading(true);
 
     const { error } = await signIn(username.trim(), password.trim());
+
+    setLoading(false);
 
     if (error) {
       toast({
@@ -101,12 +103,17 @@ export default function Login() {
       return;
     }
 
-    toast({
-      title: "Login Successful",
-      description: "Welcome back!",
-    });
+    const session = JSON.parse(localStorage.getItem("session") || "{}");
+    const role = (session.user?.role || "").toLowerCase();
 
-    navigate("/");
+    toast({ title: "Login Successful" });
+
+    // ✅ CORRECT REDIRECT
+    if (role === "admin") {
+      navigate("/admin/dashboard", { replace: true });
+    } else {
+      navigate("/sales/invoices", { replace: true });
+    }
   };
 
   return (
@@ -140,9 +147,6 @@ export default function Login() {
               armL,
               armR,
               twoFingers,
-              emailInput: emailInputRef.current,
-              passwordInput: passwordInputRef.current,
-              showPasswordCheck: showPasswordRef.current,
             }}
           />
         </div>
@@ -154,6 +158,7 @@ export default function Login() {
             ref={emailInputRef}
             value={username}
             onChange={(e) => setUsername(e.target.value)}
+            required
           />
         </div>
 
@@ -164,16 +169,16 @@ export default function Login() {
             ref={passwordInputRef}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            required
           />
-
           <label id="showPasswordToggle">
-            Show
-            <input type="checkbox" ref={showPasswordRef} />
-            <div className="indicator"></div>
+            Show <input type="checkbox" ref={showPasswordRef} />
           </label>
         </div>
 
-        <button type="submit">Log in</button>
+        <button type="submit" disabled={loading}>
+          {loading ? "Logging in..." : "Log in"}
+        </button>
       </form>
     </div>
   );

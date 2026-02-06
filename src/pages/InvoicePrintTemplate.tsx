@@ -1,4 +1,3 @@
-// src/pages/InvoicePrintTemplate.tsx
 import { format } from "date-fns";
 
 // --- Helper: Amount in Words ---
@@ -24,8 +23,8 @@ function safeDate(date: any) {
 export default function printInvoice(
   invoiceData: any, 
   parties: any[] = [], 
-  signatureFile: File | null = null,
-  assetsPath = "/assets"
+  signatureFile: File | string | null = null,
+  assetsPath = "/assets" // ✅ Points to your assets folder
 ) {
   // 1. Resolve Party Data
   const party = invoiceData.party_id && typeof invoiceData.party_id === 'object' 
@@ -38,21 +37,30 @@ export default function printInvoice(
     subtotal: 0, discount: 0, tax: 0, total: 0 
   };
   
-  // Custom Fields (PT Name, DOS) passed from main page
   const ptName = invoiceData.ptName || "";
   const dos = invoiceData.dos || "";
+  
+  const termsContent = invoiceData.terms 
+    ? invoiceData.terms.replace(/\n/g, '<br/>') 
+    : "1. Goods once sold will not be taken back.<br/>2. Warranty Terms: Company Standard Warranty Applies.";
 
-  // Total Qty
+  const bank = invoiceData.bankDetails || {
+    accNo: "", ifsc: "", bank: "", branch: "", holder: ""
+  };
+
   const totalQty = items.reduce((acc: number, it: any) => acc + Number(it.quantity || 0), 0);
 
-  // Logo & Signature
-  let signatureUrl = invoiceData.signature_url || "";
-  if (!signatureUrl && signatureFile) {
-    signatureUrl = URL.createObjectURL(signatureFile);
+  // ✅ 3. IMAGE PATHS (Fixed to use your assets)
+  const logoUrl = "/assets/logo.png"; 
+  
+  // Logic: Use uploaded file if present, otherwise use your static signature.png
+  let signatureUrl = "/assets/signature.png"; 
+  
+  if (signatureFile && signatureFile instanceof File) {
+      signatureUrl = URL.createObjectURL(signatureFile);
   }
-  const logoUrl = `${assetsPath}/logo.png`; 
 
-  // 3. Build HTML
+  // 4. Build HTML
   const html = `
     <!DOCTYPE html>
     <html>
@@ -77,8 +85,6 @@ export default function printInvoice(
         .text-center { text-align: center; }
         .uppercase { text-transform: uppercase; }
         .mb-1 { margin-bottom: 4px; }
-        .text-blue { color: #1e40af; }
-        .bg-blue { background-color: #dbeafe !important; -webkit-print-color-adjust: exact; }
         
         /* HEADER */
         .header-section { display: flex; justify-content: space-between; margin-bottom: 20px; }
@@ -236,17 +242,15 @@ export default function printInvoice(
         <div class="left-footer">
           <div class="font-bold mb-1">TERMS AND CONDITIONS</div>
           <div style="font-size: 10px; margin-bottom: 10px;">
-            1. Goods once sold will not be taken back.<br/>
-            2. Interest @ 18% p.a. will be charged if bill is not paid by due date.<br/>
-            3. Subject to Narasaraopet Jurisdiction.
+            ${termsContent}
           </div>
 
           <div class="font-bold mb-1">BANK DETAILS</div>
           <div class="bank-box" style="font-size: 11px;">
-            <div><strong>Name:</strong> GNR SURGICALS</div>
-            <div><strong>IFSC Code:</strong> HDFC0001034</div>
-            <div><strong>Account No:</strong> 50200021977447</div>
-            <div><strong>Bank:</strong> HDFC Bank, NARSARAOPETA</div>
+            <div><strong>Name:</strong> ${bank.holder || "GNR SURGICALS"}</div>
+            <div><strong>IFSC Code:</strong> ${bank.ifsc || ""}</div>
+            <div><strong>Account No:</strong> ${bank.accNo || ""}</div>
+            <div><strong>Bank:</strong> ${bank.bank || ""} ${bank.branch || ""}</div>
           </div>
         </div>
 
@@ -268,7 +272,7 @@ export default function printInvoice(
 
           <div class="stamp-box">
             <div class="text-center">
-              ${signatureUrl ? `<img src="${signatureUrl}" height="50" style="margin-bottom:5px"/>` : '<div style="height:50px"></div>'}
+              <img src="${signatureUrl}" height="80" style="margin-bottom:5px; opacity:0.8" onerror="this.style.display='none'" />
               <div style="border-top: 1px solid #000; padding-top: 2px;">Authorised Signature</div>
               <div class="font-bold">GNR SURGICALS</div>
             </div>
