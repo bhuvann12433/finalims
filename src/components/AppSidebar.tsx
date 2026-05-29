@@ -57,10 +57,10 @@ export function AppSidebar() {
       <SidebarHeader className="border-b border-sidebar-border bg-sidebar-primary text-sidebar-primary-foreground">
         <div className="flex items-center gap-2 px-4 py-4">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/10">
-            <span className="text-xl font-bold text-white">G</span>
+            <span className="text-xl font-bold text-white">S</span>
           </div>
           <div className="flex flex-col">
-            <span className="text-sm font-bold tracking-wide">GNR SURGICALS</span>
+            <span className="text-sm font-bold tracking-wide">INVENTORY STORE</span>
             <div className="flex items-center gap-1.5 mt-1 bg-black/20 px-2 py-0.5 rounded w-fit">
               {isAdmin ? (
                 <Shield className="w-3 h-3 text-yellow-300" />
