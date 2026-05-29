@@ -12,7 +12,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
 
   const { toast } = useToast();
-  const { signIn } = useAuth(); // ✅ correct
+  const { signIn } = useAuth();
   const navigate = useNavigate();
 
   const svgContainerRef = useRef<HTMLDivElement | null>(null);
@@ -20,7 +20,7 @@ export default function Login() {
   const emailInputRef = useRef<HTMLInputElement | null>(null);
   const passwordInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Monster Parts
+  // Monster refs
   const eyeL = useRef(null);
   const eyeR = useRef(null);
   const nose = useRef(null);
@@ -47,14 +47,15 @@ export default function Login() {
   const armR = useRef(null);
   const twoFingers = useRef(null);
 
-  // 🎭 Init monster animation
+  // Init animation
   useEffect(() => {
+    if (!svgContainerRef.current) return;
+
     initMonsterAnimation({
       svgContainer: svgContainerRef.current,
       emailInput: emailInputRef.current,
       passwordInput: passwordInputRef.current,
       showPasswordCheck: showPasswordRef.current,
-
       eyeL: eyeL.current,
       eyeR: eyeR.current,
       nose: nose.current,
@@ -83,9 +84,19 @@ export default function Login() {
     });
   }, []);
 
-  // 🔐 LOGIN HANDLER (FIXED)
+  // Login handler
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault(); // ✅ REQUIRED
+    e.preventDefault();
+
+    if (!username || !password) {
+      toast({
+        title: "Error",
+        description: "Enter username and password",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (loading) return;
 
     setLoading(true);
@@ -108,7 +119,6 @@ export default function Login() {
 
     toast({ title: "Login Successful" });
 
-    // ✅ CORRECT REDIRECT
     if (role === "admin") {
       navigate("/admin/dashboard", { replace: true });
     } else {
