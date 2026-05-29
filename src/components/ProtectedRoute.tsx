@@ -1,23 +1,3 @@
-import { Navigate } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
-
 export function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
-
-  // ⏳ Wait until auth state is resolved
-  if (loading) {
-    return (
-      <div className="w-full h-screen flex items-center justify-center">
-        Loading...
-      </div>
-    );
-  }
-
-  // ❌ Not logged in
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
-
-  // ✅ Logged in (user OR admin)
   return <>{children}</>;
 }

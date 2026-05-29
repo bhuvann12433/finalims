@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, ReactNode } from "react";
 
 interface AuthContextType {
   user: any | null;
@@ -11,80 +11,20 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<any | null>(null);
-  const [token, setToken] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  const API = import.meta.env.VITE_API_BASE_URL;
-
-  // ✅ RESTORE SESSION (single source of truth)
-  useEffect(() => {
-    const session = localStorage.getItem("session");
-    if (session) {
-      const parsed = JSON.parse(session);
-      setUser(parsed.user || null);
-      setToken(parsed.token || null);
-    }
-    setLoading(false);
-  }, []);
-
-  // ✅ LOGIN
-  const signIn = async (username: string, password: string) => {
-    try {
-      const res = await fetch(`${API}/api/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        return { error: { message: data.msg || "Invalid credentials" } };
-      }
-
-      const sessionData = {
-        user: data.user,
-        token: data.token,
-      };
-
-      localStorage.setItem("session", JSON.stringify(sessionData));
-      setUser(data.user);
-      setToken(data.token);
-
-      return { error: null };
-    } catch {
-      return { error: { message: "Server not reachable" } };
-    }
-  };
-
-  // ✅ LOGOUT
-  const signOut = () => {
-    localStorage.removeItem("session");
-    setUser(null);
-    setToken(null);
-  };
+  const user = { id: "1", username: "admin", role: "admin" };
+  const token = "mock-token";
+  const signIn = async () => ({ error: null });
+  const signOut = () => {};
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        token,
-        loading,
-        signIn,
-        signOut,
-      }}
-    >
+    <AuthContext.Provider value={{ user, token, loading: false, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   );
 }
 
-// ✅ Hook
 export function useAuth() {
   const ctx = useContext(AuthContext);
-  if (!ctx) {
-    throw new Error("useAuth must be used inside AuthProvider");
-  }
+  if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
   return ctx;
 }

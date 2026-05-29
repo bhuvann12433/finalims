@@ -2,15 +2,13 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 
-// --- PAGES IMPORTS ---
-import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 
 import Parties from "./pages/Parties";
@@ -23,8 +21,7 @@ import EditItem from "./pages/EditItem";
 
 import SalesInvoices from "./pages/SalesInvoices";
 import CreateSalesInvoice from "./pages/CreateSalesInvoice";
-// Make sure you saved the new file as SalesInvoiceView.tsx in your pages folder
-import SalesInvoiceView from "./pages/SalesInvoiceView"; 
+import SalesInvoiceView from "./pages/SalesInvoiceView";
 
 import ComingSoon from "./pages/ComingSoon";
 
@@ -58,22 +55,14 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
-
         <BrowserRouter>
           <Routes>
 
-            {/* PUBLIC */}
-            <Route path="/login" element={<Login />} />
+            {/* REDIRECT LOGIN TO HOME */}
+            <Route path="/login" element={<Navigate to="/" replace />} />
 
             {/* DASHBOARD */}
-            <Route
-              path="/"
-              element={
-                <ProtectedRoute>
-                  <Layout><Dashboard /></Layout>
-                </ProtectedRoute>
-              }
-            />
+            <Route path="/" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
 
             {/* PARTIES */}
             <Route path="/parties" element={<ProtectedRoute><Layout><Parties /></Layout></ProtectedRoute>} />
@@ -89,8 +78,6 @@ const App = () => (
             <Route path="/sales" element={<ProtectedRoute><Layout><SalesInvoices /></Layout></ProtectedRoute>} />
             <Route path="/sales/invoices" element={<ProtectedRoute><Layout><SalesInvoices /></Layout></ProtectedRoute>} />
             <Route path="/sales/create" element={<ProtectedRoute><Layout><CreateSalesInvoice /></Layout></ProtectedRoute>} />
-            
-            {/* --- FIXED: View Invoice Route (Wrapped in Layout) --- */}
             <Route path="/sales/view/:id" element={<ProtectedRoute><Layout><SalesInvoiceView /></Layout></ProtectedRoute>} />
 
             {/* COMING SOON */}
@@ -116,7 +103,6 @@ const App = () => (
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
-
       </TooltipProvider>
     </AuthProvider>
   </QueryClientProvider>
