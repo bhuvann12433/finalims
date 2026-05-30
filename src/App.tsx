@@ -59,7 +59,8 @@ const App = () => (
           <Routes>
 
             {/* REDIRECT LOGIN TO HOME */}
-          <Route path="/admin/dashboard" element={<Navigate to="/" replace />} />
+            <Route path="/login" element={<Navigate to="/" replace />} />
+            <Route path="/admin/dashboard" element={<Navigate to="/" replace />} />
 
             {/* DASHBOARD */}
             <Route path="/" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
