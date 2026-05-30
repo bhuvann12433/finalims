@@ -32,7 +32,7 @@ import {
 export function AppSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, signOut } = useAuth(); // ✅ ONLY SOURCE
+  const { user, signOut } = useAuth();
 
   const [openItems, setOpenItems] = useState(false);
   const [openSales, setOpenSales] = useState(false);
@@ -49,7 +49,7 @@ export function AppSidebar() {
 
   const handleLogout = async () => {
     await signOut();
-    navigate("/login", { replace: true });
+    navigate("/", { replace: true });
   };
 
   return (
@@ -57,10 +57,10 @@ export function AppSidebar() {
       <SidebarHeader className="border-b border-sidebar-border bg-sidebar-primary text-sidebar-primary-foreground">
         <div className="flex items-center gap-2 px-4 py-4">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/10">
-            <span className="text-xl font-bold text-white">S</span>
+            <span className="text-xl font-bold text-white">G</span>
           </div>
           <div className="flex flex-col">
-            <span className="text-sm font-bold tracking-wide">INVENTORY STORE</span>
+            <span className="text-sm font-bold tracking-wide">GNR SURGICALS</span>
             <div className="flex items-center gap-1.5 mt-1 bg-black/20 px-2 py-0.5 rounded w-fit">
               {isAdmin ? (
                 <Shield className="w-3 h-3 text-yellow-300" />
@@ -80,25 +80,23 @@ export function AppSidebar() {
           <SidebarGroupLabel>Main Menu</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {isAdmin && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
-                    <NavLink
-                      to="/admin/dashboard"
-                      className={({ isActive }) =>
-                        `flex items-center gap-3 px-3 py-2 rounded-lg ${
-                          isActive
-                            ? "bg-sidebar-accent text-sidebar-primary font-medium"
-                            : "text-sidebar-foreground"
-                        }`
-                      }
-                    >
-                      <LayoutDashboard className="h-4 w-4" />
-                      <span>Dashboard</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              )}
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <NavLink
+                    to="/"
+                    className={({ isActive }) =>
+                      `flex items-center gap-3 px-3 py-2 rounded-lg ${
+                        isActive
+                          ? "bg-sidebar-accent text-sidebar-primary font-medium"
+                          : "text-sidebar-foreground"
+                      }`
+                    }
+                  >
+                    <LayoutDashboard className="h-4 w-4" />
+                    <span>Dashboard</span>
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
 
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>
@@ -175,25 +173,23 @@ export function AppSidebar() {
                 )}
               </SidebarMenuItem>
 
-              {isAdmin && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
-                    <NavLink
-                      to="/reports"
-                      className={({ isActive }) =>
-                        `flex items-center gap-3 px-3 py-2 rounded-lg ${
-                          isActive
-                            ? "bg-sidebar-accent text-sidebar-primary font-medium"
-                            : "text-sidebar-foreground"
-                        }`
-                      }
-                    >
-                      <BarChart3 className="h-4 w-4" />
-                      <span>Reports</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              )}
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <NavLink
+                    to="/reports"
+                    className={({ isActive }) =>
+                      `flex items-center gap-3 px-3 py-2 rounded-lg ${
+                        isActive
+                          ? "bg-sidebar-accent text-sidebar-primary font-medium"
+                          : "text-sidebar-foreground"
+                      }`
+                    }
+                  >
+                    <BarChart3 className="h-4 w-4" />
+                    <span>Reports</span>
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -203,11 +199,11 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {[
-                ...(isAdmin ? [{ title: "Expenses", url: "/expenses", icon: Receipt }] : []),
+                { title: "Expenses", url: "/expenses", icon: Receipt },
                 { title: "POS Billing", url: "/pos", icon: CreditCard },
                 { title: "E-Invoicing", url: "/e-invoicing", icon: FileBarChart },
                 { title: "Online Orders", url: "/online-orders", icon: ShoppingCart },
-                ...(isAdmin ? [{ title: "Settings", url: "/admin/settings", icon: Settings }] : []),
+                { title: "Settings", url: "/settings", icon: Settings },
               ].map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
